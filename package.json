@@ -1,0 +1,5 @@
+{
+ "name":"aaj-ka-panchang",
+ "private":true,
+ "dependencies":{"web-push":"^3.6.7"}
+}
