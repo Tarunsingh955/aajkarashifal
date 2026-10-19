@@ -6,8 +6,9 @@
 
 const UA = "Mozilla/5.0 (compatible; AajKaRashifalBot/1.0; +https://aajkarashifal.net)";
 const MONTHS = "जनवरी,फ़रवरी,मार्च,अप्रैल,मई,जून,जुलाई,अगस्त,सितंबर,अक्टूबर,नवंबर,दिसंबर".split(",");
-const DUTY = 1.06 * 1.03; // आयात शुल्क + GST का मोटा अंदाज़ा
-const TOL = 0.12;
+const DUTY_G = 1.06 * 1.03 * 1.06; // शुल्क + GST + बाज़ार प्रीमियम का मोटा अंदाज़ा (सोना)
+const DUTY_S = 1.06 * 1.03 * 1.19; // चांदी में प्रीमियम ज़्यादा है
+const TOL_G = 0.15, TOL_S = 0.30;
 
 const get = async (url, type, log) => {
   try {
@@ -21,26 +22,27 @@ const text = h => h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g
 const num = s => parseInt(String(s).replace(/,/g, ""), 10);
 const inr = n => Math.round(n).toLocaleString("en-IN");
 
-// "24 Carat Gold" के बाद वाली तालिका में "10 gram" की पंक्ति
+// goodreturns का वाक्य: "14,765 per gram for 24 karat gold" -> 10 ग्राम = x10
 function goldFrom(t, k) {
+  let x = t.match(new RegExp("([\\d,]{4,7})\\s*per gram for " + k + "\\s*karat", "i"))
+       || t.match(new RegExp(k + "K\\s*Gold\\s*\\/g\\s*([\\d,]{4,7})", "i"));
+  if (x) return num(x[1]) * 10;
   const re = new RegExp(k + "\\s*(?:K\\b|Carat|Karat)[^]{0,80}?Gold", "ig");
   let m;
   while ((m = re.exec(t))) {
-    const seg = t.slice(m.index, m.index + 2500);
-    const x = seg.match(/\b10\s*(?:gram|grams|gm|g)\b[^0-9]{0,40}([\d,]{5,9})/i);
-    if (x) return num(x[1]);
+    const y = t.slice(m.index, m.index + 2500).match(/\b10\s*(?:gram|grams|gm|g)\b[^0-9]{0,40}([\d,]{5,9})/i);
+    if (y) return num(y[1]);
   }
   return null;
 }
+// चांदी: शहरों की तालिका में "Delhi 2,299 22,990 2,29,900" (10g, 100g, 1kg)
 function silverFrom(t) {
-  const re = /Silver[^]{0,80}?(?:Price|Rate)/ig;
-  let m;
-  while ((m = re.exec(t))) {
-    const seg = t.slice(m.index, m.index + 2500);
-    const x = seg.match(/\b1\s*(?:kg|kilogram|kilo)\b[^0-9]{0,40}([\d,]{5,9})/i);
-    if (x) return num(x[1]);
-  }
-  return null;
+  const c = t.search(/Major Cities Silver Rates/i);
+  const seg = c >= 0 ? t.slice(c, c + 3000) : t;
+  let x = seg.match(/Delhi\s+([\d,]+)\s+([\d,]+)\s+([\d,]{6,9})/i);
+  if (x) return num(x[3]);
+  x = t.match(/\b1\s*(?:kg|kilogram|kilo)\b[^0-9]{0,40}([\d,]{6,9})/i);
+  return x ? num(x[1]) : null;
 }
 
 async function compute(debug) {
@@ -55,16 +57,16 @@ async function compute(debug) {
 
   const usdinr = fx && fx.rates && fx.rates.INR;
   let estG = null, estS = null;
-  if (usdinr && xau && xau.price) estG = xau.price * usdinr / 31.1035 * 10 * DUTY;
-  if (usdinr && xag && xag.price) estS = xag.price * usdinr / 31.1035 * 1000 * DUTY;
+  if (usdinr && xau && xau.price) estG = xau.price * usdinr / 31.1035 * 10 * DUTY_G;
+  if (usdinr && xag && xag.price) estS = xag.price * usdinr / 31.1035 * 1000 * DUTY_S;
 
   let g24 = gh ? goldFrom(text(gh), "24") : null;
   let g22 = gh ? goldFrom(text(gh), "22") : null;
   let sv = sh ? silverFrom(text(sh)) : null;
 
   const raw = { g24, g22, sv };
-  const ok = (v, est) => v && (!est || Math.abs(v - est) / est <= TOL);
-  const live = { g24: ok(g24, estG), g22: ok(g22, estG && estG * 22 / 24), sv: ok(sv, estS) };
+  const ok = (v, est, tol) => v && (!est || Math.abs(v - est) / est <= tol);
+  const live = { g24: ok(g24, estG, TOL_G), g22: ok(g22, estG && estG * 22 / 24, TOL_G), sv: ok(sv, estS, TOL_S) };
   if (!live.g24) g24 = estG ? Math.round(estG) : null;
   if (!live.g22) g22 = g24 ? Math.round(g24 * 22 / 24) : null;
   if (!live.sv) sv = estS ? Math.round(estS) : null;
