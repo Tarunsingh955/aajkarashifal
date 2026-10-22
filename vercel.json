@@ -1,3 +1,0 @@
-{
- "crons":[{"path":"/api/send","schedule":"30 1 * * *"}]
-}
