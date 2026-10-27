@@ -1,22 +1,40 @@
 {
- "headers": [
-  {
-   "source": "/(img-.*|logo.png|favicon-.*|icon-.*|apple-touch-icon.png|og-image.jpg|images/.*)",
-   "headers": [
+  "headers": [
     {
-     "key": "Cache-Control",
-     "value": "public, max-age=604800, stale-while-revalidate=86400"
-    }
-   ]
-  },
-  {
-   "source": "/(sw.js|config.json|manifest.json)",
-   "headers": [
+      "source": "/(img-.*|logo.png|favicon-.*|icon-.*|apple-touch-icon.png|og-image.jpg|images/.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, stale-while-revalidate=86400"
+        }
+      ]
+    },
     {
-     "key": "Cache-Control",
-     "value": "public, max-age=0, must-revalidate"
+      "source": "/(sw.js|config.json|manifest.json|share.js)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     }
-   ]
-  }
- ]
+  ],
+  "rewrites": [
+    {
+      "source": "/aaj-ka-choghadiya",
+      "destination": "/api/choghadiya"
+    },
+    {
+      "source": "/aaj-ka-rashifal/:d",
+      "destination": "/api/day?d=:d"
+    },
+    {
+      "source": "/aaj-ka-rashifal",
+      "destination": "/api/day"
+    },
+    {
+      "source": "/sitemap-days.xml",
+      "destination": "/api/day?sitemap=1"
+    }
+  ]
 }
