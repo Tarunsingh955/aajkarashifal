@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/(sw.js|config.json|manifest.json|share.js)",
+      "source": "/(sw.js|config.json|manifest.json|share.js|nav.js)",
       "headers": [
         {
           "key": "Cache-Control",
